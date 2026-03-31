@@ -10,7 +10,7 @@ router.get('/matches', (req, res) => {
   if (!username) return res.json([]);
 
   const matches = db.prepare(`
-    SELECT m.id, w.tmdb_id, w.title, w.poster_url, w.synopsis, w.genres,
+    SELECT m.id, w.tmdb_id, w.title, w.poster_url, w.synopsis, w.genres, w.runtime, w.release_date,
            s.film_title as show_title, s.date, s.time, s.version,
            c.name as cinema_name, c.address as cinema_address
     FROM matches m
@@ -31,6 +31,8 @@ router.get('/matches', (req, res) => {
         poster_url: m.poster_url,
         synopsis: m.synopsis,
         genres: JSON.parse(m.genres),
+        runtime: m.runtime,
+        release_date: m.release_date,
         shows: []
       };
     }

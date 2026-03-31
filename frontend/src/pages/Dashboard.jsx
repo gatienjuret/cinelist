@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState("films"); // "films" or "cinemas"
+  const [sortBy, setSortBy] = useState("ajout");
 
   const loadData = async () => {
     const username = localStorage.getItem('letterboxd_username');
@@ -108,10 +109,41 @@ export default function Dashboard() {
             </button>
           </div>
         ) : (
-          <div className="grid-list">
-            {matches.map(film => (
-              <FilmCard key={film.tmdb_id} film={film} isMatch={true} />
-            ))}
+          <div>
+            <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', padding: '10px 15px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.9rem', color: '#ccc', fontWeight: 600 }}>Trier par :</span>
+              
+              <select 
+                value={['court', 'long'].includes(sortBy) ? sortBy : 'default'}
+                onChange={(e) => setSortBy(e.target.value === 'default' ? 'ajout' : e.target.value)}
+                style={{ padding: '6px 10px', borderRadius: '4px', background: 'rgba(255,255,255,0.08)', color: 'white', border: 'none', fontSize: '0.9rem', cursor: 'pointer', outline: 'none' }}
+              >
+                <option value="default">Durée (Par défaut)</option>
+                <option value="court">Plus court au plus long</option>
+                <option value="long">Plus long au plus court</option>
+              </select>
+
+              <select 
+                value={['recent', 'ancien'].includes(sortBy) ? sortBy : 'default'}
+                onChange={(e) => setSortBy(e.target.value === 'default' ? 'ajout' : e.target.value)}
+                style={{ padding: '6px 10px', borderRadius: '4px', background: 'rgba(255,255,255,0.08)', color: 'white', border: 'none', fontSize: '0.9rem', cursor: 'pointer', outline: 'none' }}
+              >
+                <option value="default">Année (Par défaut)</option>
+                <option value="recent">Plus récent d'abord</option>
+                <option value="ancien">Plus ancien d'abord</option>
+              </select>
+            </div>
+            <div className="grid-list">
+              {[...matches].sort((a, b) => {
+                if (sortBy === 'court') return (a.runtime || 999) - (b.runtime || 999);
+                if (sortBy === 'long') return (b.runtime || 0) - (a.runtime || 0);
+                if (sortBy === 'recent') return new Date(b.release_date || 0) - new Date(a.release_date || 0);
+                if (sortBy === 'ancien') return new Date(a.release_date || 0) - new Date(b.release_date || 0);
+                return 0;
+              }).map(film => (
+                <FilmCard key={film.tmdb_id} film={film} isMatch={true} />
+              ))}
+            </div>
           </div>
         )
       ) : (

@@ -13,6 +13,8 @@ function initDb() {
       synopsis TEXT,
       genres JSON,
       letterboxd_slug TEXT,
+      runtime INTEGER,
+      release_date TEXT,
       added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 

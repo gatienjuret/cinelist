@@ -49,15 +49,17 @@ async function scrapeWatchlist(username) {
               try {
                 db.prepare(`
                   INSERT OR IGNORE INTO watchlist_films 
-                  (tmdb_id, title, poster_url, synopsis, genres, letterboxd_slug) 
-                  VALUES (?, ?, ?, ?, ?, ?)
+                  (tmdb_id, title, poster_url, synopsis, genres, letterboxd_slug, runtime, release_date) 
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 `).run(
                   tmdbDetails.id, 
                   tmdbDetails.title, 
                   tmdbDetails.poster_path, 
                   tmdbDetails.overview, 
                   JSON.stringify(tmdbDetails.genres.map(g => g.name)), 
-                  slug
+                  slug,
+                  tmdbDetails.runtime || 0,
+                  tmdbDetails.release_date || null
                 );
                 
                 db.prepare(`INSERT OR IGNORE INTO user_watchlists (username, tmdb_id) VALUES (?, ?)`).run(username, tmdbDetails.id);
