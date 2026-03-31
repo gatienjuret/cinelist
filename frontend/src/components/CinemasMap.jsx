@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -6,12 +6,12 @@ import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
 let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    tooltipAnchor: [16, -28],
-    shadowSize: [41, 41]
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  tooltipAnchor: [0, 0],
+  shadowSize: [41, 41]
 });
 
 L.Marker.prototype.options.icon = DefaultIcon;
@@ -21,7 +21,7 @@ export default function CinemasMap({ cinemasData }) {
   const position = [48.8566, 2.3522];
 
   return (
-    <div className="map-wrapper" style={{ height: '400px', width: '100%', marginBottom: '2rem', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+    <div className="map-wrapper" style={{ height: '600px', width: '100%', marginBottom: '2rem', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
       <MapContainer center={position} zoom={13} style={{ height: '100%', width: '100%', zIndex: 0 }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -33,7 +33,10 @@ export default function CinemasMap({ cinemasData }) {
           if (matchedFilms.length === 0) return null;
 
           return (
-            <Marker key={cinema.allocine_id} position={[cinema.lat, cinema.lng]}>
+            <Marker key={cinema.allocine_id} position={[cinema.lat, cinema.lng]} icon={DefaultIcon}>
+              <Tooltip direction="bottom" offset={[0, 10]} opacity={0.9} permanent>
+                <span style={{ fontWeight: 'bold', fontSize: '0.8rem' }}>{cinema.name}</span>
+              </Tooltip>
               <Popup className="custom-popup">
                 <div style={{ minWidth: '150px', color: '#333' }}>
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', fontWeight: 'bold' }}>{cinema.name}</h4>
@@ -44,11 +47,11 @@ export default function CinemasMap({ cinemasData }) {
                       </li>
                     ))}
                   </ul>
-                  <button 
-                    style={{ 
-                      marginTop: '12px', 
-                      fontSize: '0.8rem', 
-                      padding: '6px 12px', 
+                  <button
+                    style={{
+                      marginTop: '12px',
+                      fontSize: '0.8rem',
+                      padding: '6px 12px',
                       cursor: 'pointer',
                       background: '#e50914',
                       color: 'white',
@@ -60,7 +63,7 @@ export default function CinemasMap({ cinemasData }) {
                       const el = document.getElementById(`cinema-${cinema.allocine_id}`);
                       if (el) {
                         const y = el.getBoundingClientRect().top + window.scrollY - 80;
-                        window.scrollTo({top: y, behavior: 'smooth'});
+                        window.scrollTo({ top: y, behavior: 'smooth' });
                       }
                     }}
                   >

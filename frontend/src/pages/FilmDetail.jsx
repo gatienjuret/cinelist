@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, CalendarPlus } from 'lucide-react';
+import { downloadICS } from '../lib/calendar';
 
 export default function FilmDetail() {
   const { state } = useLocation();
@@ -85,12 +86,21 @@ export default function FilmDetail() {
                   </div>
                   <div className="showtimes-grid">
                     {cinema.times.map((time, i) => (
-                      <div key={i} className="showtime-badge">
-                        {time.time} 
+                      <button 
+                        key={i} 
+                        className="showtime-badge"
+                        style={{ cursor: 'pointer', textAlign: 'left', outline: 'none', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0.8rem', borderRadius: '8px' }}
+                        onClick={() => downloadICS(film, cinema, date, time.time)}
+                        title="Ajouter à l'agenda"
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem', fontWeight: 600 }}>
+                          <CalendarPlus size={16} style={{ color: '#e50914' }} />
+                          {time.time} 
+                        </span>
                         <span className={`version-tag version-${time.version.toLowerCase()}`}>
                           {time.version}
                         </span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
