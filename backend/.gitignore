@@ -1,3 +1,5 @@
 node_modules/
 cinelist.db
 .env
+*_dump.html
+*_dump.json

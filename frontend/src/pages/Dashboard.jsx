@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import FilmCard from '../components/FilmCard';
-import { fetchMatches } from '../lib/api';
-import { RefreshCw } from 'lucide-react';
+import { fetchMatches, fetchCinemas } from '../lib/api';
+import { RefreshCw, Film, MapPin } from 'lucide-react';
 
 export default function Dashboard() {
   const [matches, setMatches] = useState([]);
+  const [cinemas, setCinemas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [viewMode, setViewMode] = useState("films"); // "films" or "cinemas"
 
-  const loadMatches = async () => {
+  const loadData = async () => {
     const username = localStorage.getItem('letterboxd_username');
     if (!username) {
       setLoading(false);
@@ -16,8 +18,12 @@ export default function Dashboard() {
     }
     setLoading(true);
     try {
-      const data = await fetchMatches(username);
-      setMatches(data);
+      const [matchesData, cinemasData] = await Promise.all([
+        fetchMatches(username),
+        fetchCinemas()
+      ]);
+      setMatches(matchesData);
+      setCinemas(cinemasData);
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -27,8 +33,30 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    loadMatches();
+    loadData();
   }, []);
+
+  // Compute the inverted "Cinémas" view
+  const cinemasView = {};
+  if (viewMode === "cinemas") {
+    // Initialize grouped structure mapping each cinema by its name
+    cinemas.forEach(c => {
+      cinemasView[c.name] = { ...c, matchedFilms: {} };
+    });
+    
+    // Populate matchedFilms under the respective cinema
+    matches.forEach(film => {
+      film.shows.forEach(show => {
+        if (cinemasView[show.cinema_name]) {
+          if (!cinemasView[show.cinema_name].matchedFilms[film.tmdb_id]) {
+            cinemasView[show.cinema_name].matchedFilms[film.tmdb_id] = { ...film, shows: [] };
+          }
+          // The showtimes listed under a FilmCard in this view will reflect only the séances for this particular cinema
+          cinemasView[show.cinema_name].matchedFilms[film.tmdb_id].shows.push(show);
+        }
+      });
+    });
+  }
 
   if (loading) return (
     <div>
@@ -44,24 +72,76 @@ export default function Dashboard() {
       </div>
     </div>
   );
+
   if (error) return <div className="page-container empty-state text-secondary">{error}</div>;
 
   return (
     <div>
-      <h1 className="page-title">À l'affiche <span className="badge badge-match" style={{position:'static', marginLeft:'10px'}}>{matches.length}</span></h1>
-      
-      {matches.length === 0 ? (
-        <div className="empty-state">
-          <p className="mb-2">Aucun film de ta watchlist n'est au cinéma cette semaine 😢</p>
-          <button className="btn" onClick={loadMatches} style={{ margin: '0 auto' }}>
-            <RefreshCw size={18} /> Rafraîchir
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '10px' }}>
+        <h1 className="page-title" style={{ marginBottom: 0 }}>
+          À l'affiche <span className="badge badge-match" style={{position:'static', marginLeft:'10px'}}>{matches.length}</span>
+        </h1>
+        
+        <div className="view-toggle">
+          <button 
+            className={`toggle-btn ${viewMode === 'films' ? 'active' : ''}`}
+            onClick={() => setViewMode('films')}
+          >
+            <Film size={16} /> Films
+          </button>
+          <button 
+            className={`toggle-btn ${viewMode === 'cinemas' ? 'active' : ''}`}
+            onClick={() => setViewMode('cinemas')}
+          >
+            <MapPin size={16} /> Cinémas
           </button>
         </div>
+      </div>
+      
+      {viewMode === "films" ? (
+        matches.length === 0 ? (
+          <div className="empty-state">
+            <p className="mb-2">Aucun film de ta watchlist n'est au cinéma cette semaine 😢</p>
+            <button className="btn" onClick={loadData} style={{ margin: '0 auto' }}>
+              <RefreshCw size={18} /> Rafraîchir
+            </button>
+          </div>
+        ) : (
+          <div className="grid-list">
+            {matches.map(film => (
+              <FilmCard key={film.tmdb_id} film={film} isMatch={true} />
+            ))}
+          </div>
+        )
       ) : (
-        <div className="grid-list">
-          {matches.map(film => (
-            <FilmCard key={film.tmdb_id} film={film} isMatch={true} />
-          ))}
+        <div className="cinemas-view">
+          {cinemas.map(cinema => {
+            const cinemaData = cinemasView[cinema.name];
+            // Render nothing here if cinemaData is mysteriously absent, but it shouldn't be
+            if (!cinemaData) return null;
+
+            const matchedFilms = Object.values(cinemaData.matchedFilms);
+            
+            return (
+              <div key={cinema.allocine_id} className="cinema-section">
+                <div className="cinema-header">
+                  <div className="cinema-name">{cinema.name}</div>
+                  <div className="cinema-address">{cinema.address}</div>
+                </div>
+                {matchedFilms.length > 0 ? (
+                  <div className="cinema-films-grid grid-list" style={{ marginTop: '1rem' }}>
+                    {matchedFilms.map(film => (
+                      <FilmCard key={film.tmdb_id} film={film} isMatch={true} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state" style={{ padding: '1.5rem 1rem', fontSize: '0.9rem', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
+                    Aucun film de la watchlist ne passe dans ce cinéma.
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

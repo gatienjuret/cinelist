@@ -1,4 +1,3 @@
-const cheerio = require('cheerio');
 const db = require('../db');
 
 // Cinémas Art & Essai parisiens suivis par CinéList
@@ -23,20 +22,22 @@ function initializeCinemas() {
 }
 
 /**
- * Récupère les séances d'un cinéma pour un jour donné via la page HTML d'AlloCiné.
+ * Récupère les séances d'un cinéma pour un jour donné via l'API interne d'AlloCiné.
  * @param {string} cinemaId - ID AlloCiné du cinéma (ex: "C0073")
- * @param {number} dayIndex - 0 = aujourd'hui, 1 = demain
  * @param {string} dateStr - Date au format YYYY-MM-DD
  * @returns {Array} Liste de séances { film_title, date, time, version }
  */
-async function fetchShowtimesFromHTML(cinemaId, dayIndex, dateStr) {
-  const url = `https://www.allocine.fr/seance/salle_gen_csalle=${cinemaId}.html`;
+async function fetchShowtimesFromAPI(cinemaId, dateStr) {
+  const url = `https://www.allocine.fr/_/showtimes/theater-${cinemaId}/d-${dateStr}/`;
 
   try {
     const response = await fetch(url, {
+      method: 'POST',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      }
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ filters: [] })
     });
 
     if (!response.ok) {
@@ -44,34 +45,51 @@ async function fetchShowtimesFromHTML(cinemaId, dayIndex, dateStr) {
       return [];
     }
 
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    // La page AlloCiné contient un bloc .showtimes-list-holder par jour
-    const dayContainer = $('.showtimes-list-holder').eq(dayIndex);
-    if (dayContainer.length === 0) return [];
+    const data = await response.json();
+    if (data.error || !data.results) return [];
 
     const results = [];
+    for (const item of data.results) {
+      const title = item.movie?.title;
+      if (!title) continue;
 
-    dayContainer.find('.movie-card-theater').each((_, el) => {
-      const title = $(el).find('.meta-title-link').text().trim();
-      if (!title) return;
+      if (item.showtimes) {
+        for (const [key, shows] of Object.entries(item.showtimes)) {
+          if (Array.isArray(shows)) {
+            shows.forEach(show => {
+              if (show.startsAt) {
+                // startsAt format: "2026-04-02T14:15:00" or similar
+                const timeWithTZ = show.startsAt.split('T')[1];
+                if (timeWithTZ) {
+                  const timeStr = timeWithTZ.substring(0, 5); // "14:15"
+                  let version = 'VO';
+                  if (key.includes('dubbed') || show.diffusionVersion === 'FRENCH') {
+                    version = 'VF';
+                  }
 
-      const timesText = $(el).find('.showtimes-anchor, .showtimes-list-item').text();
-      const timeMatches = timesText.match(/\d{2}:\d{2}/g);
-      if (!timeMatches) return;
+                  results.push({ film_title: title, date: dateStr, time: timeStr, version });
+                }
+              }
+            });
+          }
+        }
+      }
+    }
 
-      let version = 'VO';
-      if ($(el).text().includes('En VF')) version = 'VF';
+    // Remove exact duplicates just in case
+    const uniqueResults = [];
+    const seen = new Set();
+    for (const r of results) {
+      const id = `${r.film_title}-${r.date}-${r.time}-${r.version}`;
+      if (!seen.has(id)) {
+        seen.add(id);
+        uniqueResults.push(r);
+      }
+    }
 
-      [...new Set(timeMatches)].forEach(time => {
-        results.push({ film_title: title, date: dateStr, time, version });
-      });
-    });
-
-    return results;
+    return uniqueResults;
   } catch (error) {
-    console.error(`[allocine] Erreur scraping ${cinemaId} jour ${dayIndex}:`, error.message);
+    console.error(`[allocine] Erreur scraping API ${cinemaId} jour ${dateStr}:`, error.message);
     return [];
   }
 }
@@ -81,7 +99,7 @@ async function fetchShowtimesFromHTML(cinemaId, dayIndex, dateStr) {
  * Nettoie la base avant de la remplir.
  */
 async function scrapeAllCinemas() {
-  console.log('[allocine] Démarrage du scraping (2 jours)...');
+  console.log('[allocine] Démarrage du scraping (7 jours)...');
   
   db.prepare('DELETE FROM matches').run();
   db.prepare('DELETE FROM showtimes').run();
@@ -96,12 +114,12 @@ async function scrapeAllCinemas() {
   for (const cinema of CINEMAS) {
     console.log(`[allocine] ${cinema.name}`);
     
-    for (let dayIndex = 0; dayIndex < 2; dayIndex++) {
+    for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
       const d = new Date();
       d.setDate(d.getDate() + dayIndex);
       const dateStr = d.toISOString().split('T')[0];
 
-      const shows = await fetchShowtimesFromHTML(cinema.id, dayIndex, dateStr);
+      const shows = await fetchShowtimesFromAPI(cinema.id, dateStr);
       console.log(`  → ${dateStr}: ${shows.length} séances`);
 
       for (const s of shows) {
