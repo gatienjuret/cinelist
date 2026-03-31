@@ -38,15 +38,15 @@ export default function Watchlist() {
     }
     setSyncing(true);
     try {
-      await syncWatchlist(username);
-      alert("Sync démarrée ! Les nouveaux matchs apparaîtront bientôt.");
+      const res = await syncWatchlist(username);
+      if (res.success) {
+        await loadFilms();
+        // Optionnel: dire combien de films ont été trouvés si c'est la première fois
+      }
     } catch (err) {
-      alert("Erreur de synchronisation");
+      alert("Erreur de synchronisation. Vérifie ton pseudonyme Letterboxd.");
     } finally {
-      setTimeout(() => {
-        setSyncing(false);
-        loadFilms();
-      }, 2000);
+      setSyncing(false);
     }
   };
 
@@ -70,7 +70,12 @@ export default function Watchlist() {
           ))}
         </div>
       ) : films.length === 0 ? (
-        <div className="empty-state">Ta watchlist est vide. Fais une synchronisation !</div>
+        <div className="empty-state">
+          Ta watchlist est vide ici. <br/>
+          <small style={{ color: '#888', marginTop: '10px', display: 'block' }}>
+            Assure-toi que ton compte Letterboxd <b>{localStorage.getItem('letterboxd_username')}</b> a bien des films dans sa section "Watchlist" publique.
+          </small>
+        </div>
       ) : (
         <div className="grid-list">
           {films.map(film => (

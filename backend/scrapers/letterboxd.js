@@ -62,7 +62,7 @@ async function scrapeWatchlist(username) {
                   tmdbDetails.release_date || null
                 );
                 
-                db.prepare(`INSERT OR IGNORE INTO user_watchlists (username, tmdb_id) VALUES (?, ?)`).run(username, tmdbDetails.id);
+                db.prepare(`INSERT OR IGNORE INTO user_watchlists (username, tmdb_id) VALUES (?, ?)`).run(username.toLowerCase(), tmdbDetails.id);
                 filmsProcessed++;
               } catch(e) {
                 console.error("DB Insert Error", e);
@@ -71,7 +71,7 @@ async function scrapeWatchlist(username) {
           }
         } else {
           // If already in db, just map to user
-          db.prepare(`INSERT OR IGNORE INTO user_watchlists (username, tmdb_id) VALUES (?, ?)`).run(username, row.tmdb_id);
+          db.prepare(`INSERT OR IGNORE INTO user_watchlists (username, tmdb_id) VALUES (?, ?)`).run(username.toLowerCase(), row.tmdb_id);
         }
       }
       page++;

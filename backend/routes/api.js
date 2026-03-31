@@ -18,7 +18,7 @@ router.get('/matches', (req, res) => {
     JOIN user_watchlists uw ON w.tmdb_id = uw.tmdb_id
     JOIN showtimes s ON m.showtime_id = s.id
     JOIN cinemas c ON s.cinema_id = c.allocine_id
-    WHERE uw.username = ?
+    WHERE LOWER(uw.username) = LOWER(?)
     ORDER BY s.date ASC, s.time ASC
   `).all(username);
   
@@ -55,7 +55,7 @@ router.get('/watchlist', (req, res) => {
   const films = db.prepare(`
     SELECT w.* FROM watchlist_films w
     JOIN user_watchlists uw ON w.tmdb_id = uw.tmdb_id
-    WHERE uw.username = ?
+    WHERE LOWER(uw.username) = LOWER(?)
     ORDER BY uw.added_at DESC
   `).all(username);
 
@@ -66,7 +66,7 @@ router.get('/watchlist', (req, res) => {
     JOIN user_watchlists uw ON m.tmdb_id = uw.tmdb_id
     JOIN showtimes s ON m.showtime_id = s.id
     JOIN cinemas c ON s.cinema_id = c.allocine_id
-    WHERE uw.username = ?
+    WHERE LOWER(uw.username) = LOWER(?)
     ORDER BY s.date ASC, s.time ASC
   `).all(username);
 
@@ -99,15 +99,21 @@ router.post('/sync', async (req, res) => {
   const { username } = req.body;
   if (!username) return res.status(400).json({ error: "Username missing" });
   
-  res.json({ message: "Sync started. This might take a while.", success: true });
-  
   try {
-    const wRes = await scrapeWatchlist(username);
-    console.log("Watchlist scraped:", wRes);
-    await scrapeAllCinemas();
+    // 1. Scraper la watchlist (rapide: 1-5s)
+    const wRes = await scrapeWatchlist(username.toLowerCase());
+    
+    // 2. Lancer le matcher pour cet utilisateur (très rapide: <1s)
     runMatcher();
+    
+    res.json({ 
+      success: true, 
+      message: "Synchronisation terminée !", 
+      filmsCount: wRes.filmsProcessed 
+    });
   } catch (err) {
     console.error("Sync error:", err);
+    res.status(500).json({ error: "Erreur lors de la synchronisation" });
   }
 });
 

@@ -101,15 +101,7 @@ async function fetchShowtimesFromAPI(cinemaId, dateStr) {
 async function scrapeAllCinemas() {
   console.log('[allocine] Démarrage du scraping (7 jours)...');
   
-  db.prepare('DELETE FROM matches').run();
-  db.prepare('DELETE FROM showtimes').run();
-  db.prepare('DELETE FROM cinemas').run();
-  initializeCinemas();
-
-  const insert = db.prepare(`
-    INSERT OR IGNORE INTO showtimes (cinema_id, film_title, date, time, version)
-    VALUES (?, ?, ?, ?, ?)
-  `);
+  const allShowtimes = [];
 
   for (const cinema of CINEMAS) {
     console.log(`[allocine] ${cinema.name}`);
@@ -123,13 +115,37 @@ async function scrapeAllCinemas() {
       console.log(`  → ${dateStr}: ${shows.length} séances`);
 
       for (const s of shows) {
-        try { insert.run(cinema.id, s.film_title, s.date, s.time, s.version); } catch(e) {}
+        allShowtimes.push({ cinemaId: cinema.id, ...s });
       }
     }
 
     // Pause entre les cinémas pour éviter le rate-limiting Cloudflare
     await new Promise(r => setTimeout(r, 4000));
   }
+
+  console.log('[allocine] Remplacement transparent de la base de données...');
+  
+  const transaction = db.transaction((shows) => {
+    db.prepare('DELETE FROM matches').run();
+    db.prepare('DELETE FROM showtimes').run();
+    db.prepare('DELETE FROM cinemas').run();
+    
+    const insertCinema = db.prepare(`INSERT OR IGNORE INTO cinemas (allocine_id, name, address, lat, lng) VALUES (?, ?, ?, ?, ?)`);
+    for (const c of CINEMAS) {
+      insertCinema.run(c.id, c.name, c.address, c.lat, c.lng);
+    }
+
+    const insertShowtime = db.prepare(`
+      INSERT OR IGNORE INTO showtimes (cinema_id, film_title, date, time, version)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    for (const s of shows) {
+      try { insertShowtime.run(s.cinemaId, s.film_title, s.date, s.time, s.version); } catch(e) {}
+    }
+  });
+
+  transaction(allShowtimes);
 
   console.log('[allocine] Scraping terminé.');
 }
