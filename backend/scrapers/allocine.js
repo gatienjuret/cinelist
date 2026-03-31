@@ -2,22 +2,22 @@ const db = require('../db');
 
 // Cinémas Art & Essai parisiens suivis par CinéList
 const CINEMAS = [
-  { id: 'C1559', name: 'La Cinémathèque française', address: '51, rue de Bercy 75012 Paris' },
-  { id: 'C0073', name: 'Le Champo - Espace Jacques Tati', address: '51, rue des Écoles 75005 Paris' },
-  { id: 'C0020', name: 'La Filmothèque du Quartier Latin', address: '9, rue Champollion 75005 Paris' },
-  { id: 'C0074', name: 'Reflet Médicis', address: '3, rue Champollion 75005 Paris' },
-  { id: 'C0072', name: 'Le Grand Action', address: '5, rue des Écoles 75005 Paris' },
-  { id: 'C0015', name: 'Christine Cinéma Club', address: '4, rue Christine 75006 Paris' },
-  { id: 'C0071', name: 'Écoles Cinéma Club', address: '23, rue des Écoles 75005 Paris' }
+  { id: 'C1559', name: 'La Cinémathèque française', address: '51, rue de Bercy 75012 Paris', lat: 48.8384, lng: 2.3820 },
+  { id: 'C0073', name: 'Le Champo - Espace Jacques Tati', address: '51, rue des Écoles 75005 Paris', lat: 48.8499, lng: 2.3431 },
+  { id: 'C0020', name: 'La Filmothèque du Quartier Latin', address: '9, rue Champollion 75005 Paris', lat: 48.8491, lng: 2.3423 },
+  { id: 'C0074', name: 'Reflet Médicis', address: '3, rue Champollion 75005 Paris', lat: 48.8488, lng: 2.3427 },
+  { id: 'C0072', name: 'Le Grand Action', address: '5, rue des Écoles 75005 Paris', lat: 48.8489, lng: 2.3508 },
+  { id: 'C0015', name: 'Christine Cinéma Club', address: '4, rue Christine 75006 Paris', lat: 48.8546, lng: 2.3394 },
+  { id: 'C0071', name: 'Écoles Cinéma Club', address: '23, rue des Écoles 75005 Paris', lat: 48.8493, lng: 2.3473 }
 ];
 
 /**
  * Insère les cinémas dans la base de données s'ils n'existent pas déjà.
  */
 function initializeCinemas() {
-  const insert = db.prepare(`INSERT OR IGNORE INTO cinemas (allocine_id, name, address) VALUES (?, ?, ?)`);
+  const insert = db.prepare(`INSERT OR IGNORE INTO cinemas (allocine_id, name, address, lat, lng) VALUES (?, ?, ?, ?, ?)`);
   for (const c of CINEMAS) {
-    insert.run(c.id, c.name, c.address);
+    insert.run(c.id, c.name, c.address, c.lat, c.lng);
   }
 }
 

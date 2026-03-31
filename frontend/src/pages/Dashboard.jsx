@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import FilmCard from '../components/FilmCard';
 import { fetchMatches, fetchCinemas } from '../lib/api';
 import { RefreshCw, Film, MapPin } from 'lucide-react';
+import CinemasMap from '../components/CinemasMap';
 
 export default function Dashboard() {
   const [matches, setMatches] = useState([]);
@@ -115,6 +116,7 @@ export default function Dashboard() {
         )
       ) : (
         <div className="cinemas-view">
+          <CinemasMap cinemasData={cinemasView} />
           {cinemas.map(cinema => {
             const cinemaData = cinemasView[cinema.name];
             // Render nothing here if cinemaData is mysteriously absent, but it shouldn't be
@@ -122,8 +124,24 @@ export default function Dashboard() {
 
             const matchedFilms = Object.values(cinemaData.matchedFilms);
             
+            // Trie les séances pour chaque film
+            matchedFilms.forEach(film => {
+              film.shows.sort((a, b) => {
+                const timeA = `${a.date} ${a.time}`;
+                const timeB = `${b.date} ${b.time}`;
+                return timeA.localeCompare(timeB);
+              });
+            });
+
+            // Trie les films par ordre chronologique de leur première séance
+            matchedFilms.sort((a, b) => {
+              const earliestA = a.shows.length > 0 ? `${a.shows[0].date} ${a.shows[0].time}` : "9999-99-99 99:99";
+              const earliestB = b.shows.length > 0 ? `${b.shows[0].date} ${b.shows[0].time}` : "9999-99-99 99:99";
+              return earliestA.localeCompare(earliestB);
+            });
+            
             return (
-              <div key={cinema.allocine_id} className="cinema-section">
+              <div key={cinema.allocine_id} id={`cinema-${cinema.allocine_id}`} className="cinema-section">
                 <div className="cinema-header">
                   <div className="cinema-name">{cinema.name}</div>
                   <div className="cinema-address">{cinema.address}</div>
